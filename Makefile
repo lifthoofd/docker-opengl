@@ -3,7 +3,7 @@
 SHELL                   := /usr/bin/env bash
 SED                     := $(shell [[ `command -v gsed` ]] && echo gsed || echo sed)
 REPO_API_URL            ?= https://hub.docker.com/v2
-REPO_NAMESPACE          ?= utensils
+REPO_NAMESPACE          ?= lifthoofd
 REPO_USERNAME           ?= utensils
 IMAGE_NAME              ?= opengl
 BASE_IMAGE              ?= alpine:3.12
@@ -11,8 +11,8 @@ LLVM_VERSION            ?= 10
 TAG_SUFFIX              ?= $(shell echo "-$(BASE_IMAGE)" | $(SED) 's|:|-|g' | $(SED) 's|/|_|g' 2>/dev/null )
 VCS_REF                 := $(shell git rev-parse --short HEAD)
 BUILD_DATE              := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-PLATFORMS               ?= linux/amd64,linux/386,linux/arm64,linux/arm/v7
-RELEASES                ?= latest stable 20.0.6 20.1.1 20.1.2
+PLATFORMS               ?= linux/amd64,linux/arm64,linux/arm/v7
+RELEASES                ?= latest stable
 STABLE                  ?= 20.0.6
 LATEST                  ?= 20.1.2
 BUILD_PROGRESS          ?= auto
@@ -58,23 +58,9 @@ $(RELEASES):
 		--progress=$(BUILD_PROGRESS) \
 		--output=$(BUILD_OUTPUT) \
 		--file Dockerfile .
-	if [ ! -z "$$MICRO_BADGER_URL" ] && [ "$$BUILD_OUTPUT" == "type=registry" ]; \
-	then \
-		echo "Triggering MicroBadger WebHook"; \
-		curl -d "update" "$$MICRO_BADGER_URL"; \
-	fi
 	
 # Update README on DockerHub registry.
 .PHONY: push-readme
 .SILENT: push-readme
 push-readme:
-	echo "Authenticating to $(REPO_API_URL)"; \
-		token=$$(curl -s -X POST -H "Content-Type: application/json" -d '{"username": "$(REPO_USERNAME)", "password": "'"$$REPO_PASSWORD"'"}' $(REPO_API_URL)/users/login/ | jq -r .token); \
-		code=$$(jq -n --arg description "$$(<README.md)" '{"registry":"registry-1.docker.io","full_description": $$description }' | curl -s -o /dev/null  -L -w "%{http_code}" $(REPO_API_URL)/repositories/$(REPO_NAMESPACE)/$(IMAGE_NAME)/ -d @- -X PATCH -H "Content-Type: application/json" -H "Authorization: JWT $$token"); \
-		if [ "$$code" != "200" ]; \
-		then \
-			echo "Failed to update README.md"; \
-			exit 1; \
-		else \
-			echo "Success"; \
-		fi;
+	echo "Authenticating to $(REPO_API_URL)";
